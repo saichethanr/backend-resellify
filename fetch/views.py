@@ -29,8 +29,8 @@ JOIN public.products p ON pd.productid = p.productid;
 class ReviewsView(APIView):
     def get(self,request,*args,**kwargs):
         with connection.cursor() as cursor:
-            query="""SELECT reviewid, reviewRating, customerid, productid
-            FROM public.reviews"""
+            query="""SELECT rev.reviewid, rev."reviewRating", rev."customerid", rev."productid"
+                FROM public.reviews rev"""
             cursor.execute(query)
             rows=cursor.fetchall()
             serialized_data=[]
@@ -43,13 +43,13 @@ class ReviewsView(APIView):
 class IssuesView(APIView):
     def get(self,request,*args,**kwargs):
         with connection.cursor() as cursor:
-            query = """SELECT issueid, productid, customerid, issueDesc
-            FROM public.issues """
+            query = """SELECT iss.issueid, iss."productid", iss."customerid", iss."issueDesc"
+            FROM public.issues iss"""
             cursor.execute(query)
             rows=cursor.fetchall()
             serialized_data=[]
             for row in rows:
-                data_dict=dict(zip([col[0] for col in cursor.description]),row)
+                data_dict=dict(zip([col[0] for col in cursor.description],row))
                 serializer=IssuesSerializer(data_dict)
                 serialized_data.append(serializer.data)
             return Response(serialized_data)
