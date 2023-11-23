@@ -1,4 +1,4 @@
-fetch("http://127.0.0.1:8000/fetch/issues/")
+fetch("http://127.0.0.1:8000/fetch/categories/")
   .then((response) => {
     return response.json();
   })
