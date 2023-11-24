@@ -9,6 +9,7 @@ from django.db import connection
 from django.db import connection
 from rest_framework.decorators import api_view,renderer_classes
 from rest_framework.renderers import JSONRenderer
+from django.contrib.auth.hashers import check_password 
 class RegisterUserView(APIView):
     renderer_classes = [JSONRenderer]
     def generate_unique_merchant_id(self):
@@ -75,3 +76,48 @@ def is_valid_merchant_code(merchant_code):
         merchant_codes = ["123", "456", "789", "234", "567","890", "345", "678", "901", "432","765", "189", "543", "876", "210","654", "987", "321", "876", "543","210", "987", "654", "321", "123","456", "789", "234", "567", "890","345", "678", "901", "432", "765",
         "189", "543", "876", "210", "654","987", "321", "876", "543", "210","987", "654", "321", "123", "456"]  
         return merchant_code in merchant_codes
+
+
+
+class LoginUserView(APIView):
+    renderer_classes = [JSONRenderer]
+
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        mail = data.get('mail')
+        password = data.get('password')
+
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT * FROM customers WHERE \"customerMail\" = %s", [mail])
+            customer_exists = cursor.fetchone()
+            cursor.execute("SELECT * FROM merchants WHERE \"merchantMail\"  = %s", [mail])
+            merchant_exists = cursor.fetchone()
+
+        if customer_exists:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT customerid, customerPwd FROM customers WHERE \"customerMail\" = %s", [mail])
+                customer_data = cursor.fetchone()
+
+            if customer_data and check_password(password, customer_data[1]):
+                return Response({
+                    'authenticated': True,
+                    'customerid': customer_data[0],
+                    'merchant': False,
+                    'customer': True
+                })
+        elif merchant_exists:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT merchantid, merchantPwd FROM merchants WHERE \"merchantMail\" = %s", [mail])
+                merchant_data = cursor.fetchone()
+
+            if merchant_data and check_password(password, merchant_data[1]):
+                return Response({
+                    'authenticated': True,
+                    'merchantid': merchant_data[0],
+                    'merchant': True,
+                    'customer': False
+                })
+        return Response({'authenticated': False})
+
+
+
