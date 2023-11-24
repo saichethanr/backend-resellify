@@ -30,12 +30,14 @@ class RegisterUserView(APIView):
             if count == 0:
                 break
         return new_customer_id
+   
 
     def post(self, request, *args, **kwargs):
         data = request.data
         name = data.get('name')
         email = data.get('email')
         is_merchant = data.get('isMerchant')
+        print(is_merchant)
         phone_number = data.get('phoneNumber')
         password = data.get('password')
         merchant_code = data.get('merchantCode')
@@ -46,8 +48,9 @@ class RegisterUserView(APIView):
 
             cursor.execute("SELECT * FROM merchants WHERE \"merchantMail\"  = %s", [email])
             merchant_exists = cursor.fetchone()
-
+    
         try:
+            
             if customer_exists or merchant_exists:
                 return Response({'message': 'User already exists'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -56,24 +59,19 @@ class RegisterUserView(APIView):
                 with connection.cursor() as cursor:
                     cursor.execute("INSERT INTO merchants VALUES (%s, %s, %s, %s, %s, %s)",
                                    [new_merchant_id, name, phone_number, 0, email, password])
+                return Response({'authenticated': True,'merchantid':new_merchant_id}, status=status.HTTP_201_CREATED)
             else:
                 new_customer_id = self.generate_unique_customer_id()
                 with connection.cursor() as cursor:
                     cursor.execute("INSERT INTO customers  VALUES (%s, %s, %s, %s, %s)",
                                    [new_customer_id, name, phone_number, email, password])
-
-            return Response({'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
-
+                return Response({'authenticated': True,'customerid':new_customer_id}, status=status.HTTP_201_CREATED)
         except Exception as e:
             import logging
             logging.error(f"Error creating user: {e}", exc_info=True)
             return Response({'message': 'Error creating user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 def is_valid_merchant_code(merchant_code):
-    
-    merchant_codes = [123, 456, 789, 234, 567,890, 345, 678, 901, 432,765, 189, 543, 876, 210,654, 987, 321, 876, 543,210, 987, 654, 321, 123,456, 789, 234, 567, 890,345, 678, 901, 432, 765,
-    189, 543, 876, 210, 654,
-    987, 321, 876, 543, 210,
-    987, 654, 321, 123, 456]  
-    return merchant_code in merchant_codes
-
+        merchant_codes = ["123", "456", "789", "234", "567","890", "345", "678", "901", "432","765", "189", "543", "876", "210","654", "987", "321", "876", "543","210", "987", "654", "321", "123","456", "789", "234", "567", "890","345", "678", "901", "432", "765",
+        "189", "543", "876", "210", "654","987", "321", "876", "543", "210","987", "654", "321", "123", "456"]  
+        return merchant_code in merchant_codes
