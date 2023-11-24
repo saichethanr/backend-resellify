@@ -12,6 +12,7 @@ class ProductSerializer(serializers.Serializer):
     product_img = serializers.ImageField()  
     merchant_id = serializers.IntegerField()
     category_id=serializers.IntegerField()
+    category_name=serializers.CharField()
 
 class ReviewsSerializer(serializers.Serializer):
     reviewid=serializers.IntegerField()
