@@ -2,7 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db import connection
-from .serializers import ProductSerializer,ReviewsSerializer,IssuesSerializer,CategorySerializer
+from .serializers import ProductSerializer,ReviewsSerializer,IssuesSerializer,CategorySerializer,CustomerSerializer,MerchantSerializer
 
 class ProductDetailsView(APIView):
     def get(self, request, *args, **kwargs):
@@ -66,3 +66,30 @@ class CategoryView(APIView):
                 serializer=CategorySerializer(data_dict)
                 serialized_data.append(serializer.data)
             return Response(serialized_data)
+        
+class CustomerView(APIView):
+    def get(self,request,*args,**kwargs):
+        with connection.cursor() as cursor:
+            query="""SELECT c.customerid,c."customerName",c."customerNo",c."customerMail",c."customerPwd" FROM public.customers c"""
+            cursor.execute(query)
+            rows=cursor.fetchall()
+            serialized_data=[]
+            for row in rows:
+                data_dict=dict(zip([col[0] for col in cursor.description],row))
+                serializer=CustomerSerializer(data_dict)
+                serialized_data.append(serializer.data)
+            return Response(serialized_data)
+
+class MerchantView(APIView):
+    def get(self,request,*args,**kwargs):
+        with connection.cursor() as cursor:
+            query="""SELECT m.merchantid,m."merchantName",m."merchantNo",m."merchantRating",m."merchantMail",m."merchantPwd" FROM public.merchants m"""
+            cursor.execute(query)
+            rows=cursor.fetchall()
+            serialized_data=[]
+            for row in rows:
+                data_dict=dict(zip([col[0] for col in cursor.description],row))
+                serializer=MerchantSerializer(data_dict)
+                serialized_data.append(serializer.data)
+            return Response(serialized_data)
+

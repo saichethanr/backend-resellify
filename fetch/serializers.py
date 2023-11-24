@@ -27,3 +27,20 @@ class IssuesSerializer(serializers.Serializer):
 class CategorySerializer(serializers.Serializer):
     categoryid=serializers.IntegerField()
     categoryName=serializers.CharField()
+
+class CustomerSerializer(serializers.Serializer):
+    customerid=serializers.IntegerField()
+    customerName=serializers.CharField()
+    customerNo=serializers.IntegerField()
+    customerMail=serializers.CharField()
+    customerPwd=serializers.CharField()
+
+class MerchantSerializer(serializers.Serializer):
+    merchantid=serializers.IntegerField()
+    merchantName=serializers.CharField()
+    merchantNo=serializers.IntegerField()
+    merchantRating=serializers.IntegerField()
+    merchantMail=serializers.CharField()
+    merchantPwd=serializers.CharField()
+
+         

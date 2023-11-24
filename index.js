@@ -1,4 +1,4 @@
-fetch("http://127.0.0.1:8000/fetch/categories/")
+fetch("http://127.0.0.1:8000/fetch/merchants/")
   .then((response) => {
     return response.json();
   })
