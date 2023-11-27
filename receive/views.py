@@ -79,21 +79,21 @@ class LoginUserView(APIView):
     renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
         data = request.data
-        mail = data.get('mail')
+        email = data.get('email')
         password = data.get('password')
 
         with connection.cursor() as cursor:
-            cursor.execute("SELECT * FROM customers WHERE \"customerMail\" = %s", [mail])
+            cursor.execute("SELECT * FROM customers WHERE \"customerMail\" = %s", [email])
             customer_exists = cursor.fetchone()
-            cursor.execute("SELECT * FROM merchants WHERE \"merchantMail\"  = %s", [mail])
+            cursor.execute("SELECT * FROM merchants WHERE \"merchantMail\"  = %s", [email])
             merchant_exists = cursor.fetchone()
 
         if customer_exists:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT customerid, customerPwd FROM customers WHERE \"customerMail\" = %s", [mail])
+                cursor.execute("SELECT \"customerid\",\"customerPwd\" FROM customers WHERE \"customerMail\" = %s", [email])
                 customer_data = cursor.fetchone()
 
-            if customer_data and check_password(password, customer_data[1]):
+            if customer_data and self.verify_password(password, customer_data[1]):
                 return Response({
                     'authenticated': True,
                     'customerid': customer_data[0],
@@ -102,10 +102,10 @@ class LoginUserView(APIView):
                 })
         elif merchant_exists:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT merchantid, merchantPwd FROM merchants WHERE \"merchantMail\" = %s", [mail])
+                cursor.execute("SELECT \"merchantid\",\"merchantPwd\" FROM merchants WHERE \"merchantMail\" = %s", [email])
                 merchant_data = cursor.fetchone()
 
-            if merchant_data and check_password(password, merchant_data[1]):
+            if merchant_data and self.verify_password(password, merchant_data[1]):
                 return Response({
                     'authenticated': True,
                     'merchantid': merchant_data[0],
@@ -113,6 +113,8 @@ class LoginUserView(APIView):
                     'customer': False
                 })
         return Response({'authenticated': False})
+    def verify_password(self, input_password, stored_password):
+        return input_password == stored_password
 
 class ProductView(APIView):
     renderer_classes = [JSONRenderer]
