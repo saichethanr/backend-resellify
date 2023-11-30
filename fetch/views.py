@@ -2,6 +2,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from django.db import connection
+from rest_framework.renderers import JSONRenderer
 from .serializers import ProductSerializer,ReviewsSerializer,IssuesSerializer,CategorySerializer,CustomerSerializer,MerchantSerializer
 
 class ProductDetailsView(APIView):
@@ -106,6 +107,7 @@ class MerchantView(APIView):
             return Response(serialized_data)
 
 class CustomerDetailsView(APIView):
+    renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
         data = request.data
         customer_id = data.get('customerid')
@@ -129,6 +131,7 @@ class CustomerDetailsView(APIView):
         else:
             return Response({"error": "Customer not found"}, status=404)
 class MerchantDetailsView(APIView):
+    renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
         data = request.data
         merchant_id = data.get('merchantid')

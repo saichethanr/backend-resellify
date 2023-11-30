@@ -164,6 +164,7 @@ def generate_unique_product_id():
             return product_id
 
 class CustomerOrdersView(APIView):
+    renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
         data = request.data
         customer_id = data.get('customerid')
@@ -191,6 +192,7 @@ class CustomerOrdersView(APIView):
     
 
 class MerchantOrdersView(APIView):
+    renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
         data = request.data
         merchant_id = data.get('merchantid')
