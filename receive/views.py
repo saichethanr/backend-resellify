@@ -118,7 +118,6 @@ class LoginUserView(APIView):
 
 class ProductView(APIView):
     renderer_classes = [JSONRenderer]
-
     def post(self, request, *args, **kwargs):
         data = request.data
         product_id = generate_unique_product_id()
@@ -164,3 +163,57 @@ def generate_unique_product_id():
         if count == 0:
             return product_id
 
+class CustomerOrdersView(APIView):
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        customer_id = data.get('customerid')
+
+        query = """
+            SELECT o.orderid, pd."productName", p.merchantid, pd."productPrice"
+            FROM public.orders o
+            JOIN public.products p ON o.productid = p.productid
+            JOIN public.productdetails pd ON p.productid = pd.productid
+            WHERE o.customerid = %s
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(query, [customer_id])
+            orders = cursor.fetchall()
+
+        response_data = [
+            {
+                "orderid": order[0],
+                "productName": order[1],
+                "merchantid": order[2],
+                "productPrice": order[3]
+            } for order in orders
+        ]
+        return Response(response_data)
+    
+
+class MerchantOrdersView(APIView):
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        merchant_id = data.get('merchantid')
+
+        query = """
+            SELECT o.orderid, o.customerid, c."customerName", pd."productName", pd."productPrice"
+            FROM public.orders o
+            JOIN public.customers c ON o.customerid = c.customerid
+            JOIN public.products p ON o.productid = p.productid
+            JOIN public.productdetails pd ON p.productid = pd.productid
+            WHERE p.merchantid = %s
+        """
+        with connection.cursor() as cursor:
+            cursor.execute(query, [merchant_id])
+            orders = cursor.fetchall()
+        response_data = [
+            {
+                "orderid": order[0],
+                "customerid": order[1],
+                "customerName": order[2],
+                "ProductName": order[3],
+                "Price": order[4]
+            } for order in orders
+        ]
+
+        return Response(response_data)
