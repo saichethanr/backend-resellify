@@ -105,3 +105,50 @@ class MerchantView(APIView):
                 serialized_data.append(serializer.data)
             return Response(serialized_data)
 
+class CustomerDetailsView(APIView):
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        customer_id = data.get('customerid')
+
+        with connection.cursor() as cursor:
+            query = """
+                SELECT * FROM public.customers
+                WHERE customerid = %s
+            """
+            cursor.execute(query, [customer_id])
+            customer_details = cursor.fetchone()
+
+        if customer_details:
+            response_data = {
+                "customerid": customer_details[0],
+                "customerName": customer_details[1],
+                "customerNo": customer_details[2],
+                "customerMail": customer_details[3],
+            }
+            return Response(response_data)
+        else:
+            return Response({"error": "Customer not found"}, status=404)
+class MerchantDetailsView(APIView):
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        merchant_id = data.get('merchantid')
+
+        with connection.cursor() as cursor:
+            query = """
+                SELECT * FROM public.merchants
+                WHERE merchantid = %s
+            """
+            cursor.execute(query, [merchant_id])
+            merchant_details = cursor.fetchone()
+
+        if merchant_details:
+            response_data = {
+                "merchantid": merchant_details[0],
+                "customerName": merchant_details[1],
+                "customerNo": merchant_details[2],
+                "merchantRating":merchant_details[3],
+                "merchantMail": merchant_details[4],
+            }
+            return Response(response_data)
+        else:
+            return Response({"error": "Customer not found"}, status=404)
