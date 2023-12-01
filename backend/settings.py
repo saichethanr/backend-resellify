@@ -85,8 +85,8 @@ DATABASES = {
         'NAME': 'RESELLIFY',
         'USER': 'postgres',
         'PASSWORD': '1445',
-        'HOST': 'localhost',  # Set to the IP address or domain of your PostgreSQL server
-        'PORT': '5432',       # Change to the port used by your PostgreSQL server
+        'HOST': 'localhost', 
+        'PORT': '5432',       
     }
 }
 

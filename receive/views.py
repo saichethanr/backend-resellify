@@ -8,6 +8,7 @@ import random
 from rest_framework.decorators import api_view,renderer_classes
 from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.hashers import check_password 
+from rest_framework.exceptions import APIException
 class RegisterUserView(APIView):
     renderer_classes = [JSONRenderer]
     def generate_unique_merchant_id(self):
@@ -169,15 +170,14 @@ class CustomerOrdersView(APIView):
         data = request.data
         customer_id = data.get('customerid')
 
-        query = """
+       
+        with connection.cursor() as cursor:
+            cursor.execute("""
             SELECT o.orderid, pd."productName", p.merchantid, pd."productPrice"
             FROM public.orders o
             JOIN public.products p ON o.productid = p.productid
             JOIN public.productdetails pd ON p.productid = pd.productid
-            WHERE o.customerid = %s
-        """
-        with connection.cursor() as cursor:
-            cursor.execute(query, [customer_id])
+            WHERE o.customerid = %s""", [customer_id])
             orders = cursor.fetchall()
 
         response_data = [
@@ -190,32 +190,97 @@ class CustomerOrdersView(APIView):
         ]
         return Response(response_data)
     
-
 class MerchantOrdersView(APIView):
     renderer_classes = [JSONRenderer]
     def post(self, request, *args, **kwargs):
+        try:
+            data = request.data
+            merchant_id = data.get('merchantid')
+            print(merchant_id)
+            query = """
+                SELECT o.orderid, o.customerid, c."customerName", pd."productName", pd."productPrice"
+                FROM public.orders o
+                JOIN public.customers c ON o.customerid = c.customerid
+                JOIN public.products p ON o.productid = p.productid
+                JOIN public.productdetails pd ON p.productid = pd.productid
+                WHERE p.merchantid = %s
+            """
+            with connection.cursor() as cursor:
+                cursor.execute(query, [merchant_id])
+                orders = cursor.fetchall()
+            response_data = [
+                {
+                    "orderid": order[0],
+                    "customerid": order[1],
+                    "customerName": order[2],
+                    "ProductName": order[3],
+                    "Price": order[4]
+                } for order in orders
+            ]
+            return Response(response_data)
+
+        except Exception as e:
+            raise APIException(detail=str(e), code=500)
+        
+
+
+class RaiseIssueView(APIView):
+    renderer_classes = [JSONRenderer]
+    def post(self, request, *args, **kwargs):
         data = request.data
-        merchant_id = data.get('merchantid')
+        customer_id = data.get('customerid')
+        product_id = data.get('productid')
+        issue_desc = data.get('issueDesc')
+        issue_id = self.generate_unique_issue_id()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "INSERT INTO public.issues VALUES (%s, %s, %s, %s)",
+                    [issue_id, product_id, customer_id, issue_desc]
+                )
+            return Response({"message": "Issue raised successfully"}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    def generate_unique_issue_id(self):
+        for issue_id in range(8000, 9000):
+            if not self.issue_id_exists(issue_id):
+                return issue_id
+        raise ValueError("Unable to find a unique issueid in the specified range")
 
-        query = """
-            SELECT o.orderid, o.customerid, c."customerName", pd."productName", pd."productPrice"
-            FROM public.orders o
-            JOIN public.customers c ON o.customerid = c.customerid
-            JOIN public.products p ON o.productid = p.productid
-            JOIN public.productdetails pd ON p.productid = pd.productid
-            WHERE p.merchantid = %s
-        """
+    def issue_id_exists(self, issue_id):
         with connection.cursor() as cursor:
-            cursor.execute(query, [merchant_id])
-            orders = cursor.fetchall()
-        response_data = [
-            {
-                "orderid": order[0],
-                "customerid": order[1],
-                "customerName": order[2],
-                "ProductName": order[3],
-                "Price": order[4]
-            } for order in orders
-        ]
+            cursor.execute("SELECT COUNT(*) FROM public.issues WHERE issueid = %s", [issue_id])
+            return cursor.fetchone()[0] > 0
 
-        return Response(response_data)
+class ViewIssuesView(APIView):
+    renderer_classes = [JSONRenderer]
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        customer_id = data.get('customerid')
+        merchant_id = data.get('merchantid')
+        if customer_id is not None:
+            issues = self.get_issues_for_customer(customer_id)
+        elif merchant_id is not None:
+            issues = self.get_issues_for_merchant(merchant_id)
+        else:
+            return Response({"error": "Provide either customerid or merchantid"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"issues": issues}, status=status.HTTP_200_OK)
+    def get_issues_for_customer(self, customer_id):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT * FROM public.issues WHERE customerid = %s",
+                [customer_id]
+            )
+            columns = [col[0] for col in cursor.description]
+            issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return issues
+    def get_issues_for_merchant(self, merchant_id):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT i.* FROM public.issues i JOIN public.products p ON i.productid = p.productid WHERE p.merchantid = %s",
+                [merchant_id]
+            )
+            columns = [col[0] for col in cursor.description]
+            issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return issues
+

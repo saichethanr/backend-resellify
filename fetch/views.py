@@ -135,23 +135,27 @@ class MerchantDetailsView(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data
         merchant_id = data.get('merchantid')
-
-        with connection.cursor() as cursor:
-            query = """
+        try:
+            with connection.cursor() as cursor:
+                query = """
                 SELECT * FROM public.merchants
                 WHERE merchantid = %s
             """
-            cursor.execute(query, [merchant_id])
-            merchant_details = cursor.fetchone()
+                cursor.execute(query, [merchant_id])
+                merchant_details = cursor.fetchone()
+                print("Merchant Details:", merchant_details)
 
-        if merchant_details:
-            response_data = {
-                "merchantid": merchant_details[0],
-                "customerName": merchant_details[1],
-                "customerNo": merchant_details[2],
-                "merchantRating":merchant_details[3],
-                "merchantMail": merchant_details[4],
-            }
-            return Response(response_data)
-        else:
-            return Response({"error": "Customer not found"}, status=404)
+            if merchant_details:
+                response_data = {
+                    "merchantid": merchant_details[0],
+                    "merchantName": merchant_details[1],
+                    "merchantNo": merchant_details[2],
+                    "merchantRating": merchant_details[3],
+                    "merchantMail": merchant_details[4],
+                    }
+                return Response(response_data)
+            else:
+                return Response({"error": "Merchant not found"}, status=404)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=500)
