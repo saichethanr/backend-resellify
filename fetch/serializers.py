@@ -1,4 +1,22 @@
 from rest_framework import serializers
+import base64
+from django.core.files.base import ContentFile
+from rest_framework import serializers
+
+class Base64ImageField(serializers.ImageField):
+    """
+    A custom serializer field to handle base64-encoded images.
+    """
+
+    def to_internal_value(self, data):
+        if isinstance(data, str) and data.startswith('data:image'):
+            format, imgstr = data.split(';base64,')
+            ext = format.split('/')[-1]
+            data = ContentFile(base64.b64decode(imgstr), name=f'temporary_image.{ext}')
+        elif data is None:
+            data = ContentFile('', name='empty_file.txt')
+
+        return super().to_internal_value(data)
 
 
 class ProductSerializer(serializers.Serializer):
@@ -9,7 +27,7 @@ class ProductSerializer(serializers.Serializer):
     product_rating = serializers.FloatField()
     product_life = serializers.IntegerField()
     product_price = serializers.IntegerField()
-    product_img = serializers.ImageField()  
+    product_img =serializers.CharField()
     merchant_id = serializers.IntegerField()
     category_id=serializers.IntegerField()
     category_name=serializers.CharField()

@@ -5,39 +5,51 @@ from django.db import connection
 from rest_framework.renderers import JSONRenderer
 from .serializers import ProductSerializer,ReviewsSerializer,IssuesSerializer,CategorySerializer,CustomerSerializer,MerchantSerializer
 
+
 class ProductDetailsView(APIView):
     def get(self, request, *args, **kwargs):
         with connection.cursor() as cursor:
             query = """
-          SELECT
-    pd.productid AS product_id,
-    pd."productName" AS product_name,
-    pd."productDesc" AS product_desc,
-    pd."productDate" AS product_date,
-    pd."productRating" AS product_rating,
-    pd."productLife" AS product_life,
-    pd."productPrice" AS product_price,
-    pd."productImg" AS product_img,
-    p.merchantid AS merchant_id,
-    p."categoryid" AS category_id,
-    c."categoryName" AS category_name
-FROM
-    public.productdetails pd
-JOIN
-    public.products p ON pd.productid = p.productid
-JOIN
-    public.categories c ON p.categoryid = c.categoryid;
-
-
+                SELECT
+                    pd.productid AS product_id,
+                    pd."productName" AS product_name,
+                    pd."productDesc" AS product_desc,
+                    pd."productDate" AS product_date,
+                    pd."productRating" AS product_rating,
+                    pd."productLife" AS product_life,
+                    pd."productPrice" AS product_price,
+                    encode(pd."productImg", 'base64') AS product_img_base64,
+                    pd."productImgType" AS product_img_type,
+                    p.merchantid AS merchant_id,
+                    p."categoryid" AS category_id,
+                    c."categoryName" AS category_name
+                FROM
+                    public.productdetails pd
+                JOIN
+                    public.products p ON pd.productid = p.productid
+                JOIN
+                    public.categories c ON p.categoryid = c.categoryid;
             """
             cursor.execute(query)
             rows = cursor.fetchall()
             serialized_data = []
             for row in rows:
                 data_dict = dict(zip([col[0] for col in cursor.description], row))
-                serializer = ProductSerializer(data_dict)
-                serialized_data.append(serializer.data)
+                print(type(data_dict))
+                print(data_dict)
+               
+                if not data_dict['product_img_type']:
+                    continue
+                data_dict['product_img'] = data_dict['product_img_type'] + ',' + data_dict['product_img_base64']
+                del data_dict['product_img_type']
+                del data_dict['product_img_base64']
+                serializer = ProductSerializer(data=data_dict)
+                if serializer.is_valid():
+                    serialized_data.append(serializer.validated_data)
+                else:
+                    print(serializer.errors)
             return Response(serialized_data)
+
         
 class ReviewsView(APIView):
     def get(self,request,*args,**kwargs):

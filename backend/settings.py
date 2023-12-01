@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'fetch',
     'receive',
     'corsheaders',
+    'handle',
 
 ]
 

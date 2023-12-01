@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view,renderer_classes
 from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.hashers import check_password 
 from rest_framework.exceptions import APIException
+import base64
 class RegisterUserView(APIView):
     renderer_classes = [JSONRenderer]
     def generate_unique_merchant_id(self):
@@ -131,6 +132,7 @@ class ProductView(APIView):
         product_img = data.get('product_img')
         category_name = data.get('category_name')
         merchant_id = data.get('merchant_id')
+        print(len(product_img))
         try:
             with connection.cursor() as cursor:
                 cursor.execute("""
@@ -147,13 +149,18 @@ class ProductView(APIView):
                     INSERT INTO public.products
                     VALUES (%s, %s, %s)
                 """, [product_id, 2608, category_id])
-
+            product_img_type, product_img_str = product_img.split(',')
+            product_img_bytes = base64.b64decode(product_img_str)
+            
+            with open('test.png', 'wb') as f:
+                f.write(product_img_bytes)
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO public.productdetails VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, [product_id, product_name, product_desc, product_date, product_rating, product_life, product_price, product_img])
+                    INSERT INTO public.productdetails VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, [product_id, product_name, product_desc, product_date, product_rating, product_life, product_price, product_img_bytes, product_img_type])
             return Response({"productadd": "true",'productid':product_id}, status=status.HTTP_201_CREATED)
         except Exception as e:
+            raise e
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 def generate_unique_product_id():
     while True:
@@ -254,17 +261,21 @@ class RaiseIssueView(APIView):
 
 class ViewIssuesView(APIView):
     renderer_classes = [JSONRenderer]
+
     def post(self, request, *args, **kwargs):
         data = request.data
         customer_id = data.get('customerid')
-        merchant_id = data.get('merchantid')
+        # merchant_id = data.get('merchantid')
+
         if customer_id is not None:
             issues = self.get_issues_for_customer(customer_id)
-        elif merchant_id is not None:
-            issues = self.get_issues_for_merchant(merchant_id)
+        # elif merchant_id is not None:
+        #     issues = self.get_issues_for_merchant(merchant_id)
         else:
             return Response({"error": "Provide either customerid or merchantid"}, status=status.HTTP_400_BAD_REQUEST)
+
         return Response({"issues": issues}, status=status.HTTP_200_OK)
+
     def get_issues_for_customer(self, customer_id):
         with connection.cursor() as cursor:
             cursor.execute(
@@ -274,13 +285,13 @@ class ViewIssuesView(APIView):
             columns = [col[0] for col in cursor.description]
             issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
         return issues
-    def get_issues_for_merchant(self, merchant_id):
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT i.* FROM public.issues i JOIN public.products p ON i.productid = p.productid WHERE p.merchantid = %s",
-                [merchant_id]
-            )
-            columns = [col[0] for col in cursor.description]
-            issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        return issues
 
+    # def get_issues_for_merchant(self, merchant_id):
+    #     with connection.cursor() as cursor:
+    #         cursor.execute(
+    #             "SELECT i.* FROM public.issues i JOIN public.products p ON i.productid = p.productid WHERE p.merchantid = %s",
+    #             [merchant_id]
+    #         )
+    #         columns = [col[0] for col in cursor.description]
+    #         issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    #     return issues
