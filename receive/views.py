@@ -148,7 +148,7 @@ class ProductView(APIView):
                 cursor.execute("""
                     INSERT INTO public.products
                     VALUES (%s, %s, %s)
-                """, [product_id, 2608, category_id])
+                """, [product_id, merchant_id, category_id])
             product_img_type, product_img_str = product_img.split(',')
             product_img_bytes = base64.b64decode(product_img_str)
             
