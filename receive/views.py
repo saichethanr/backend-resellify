@@ -77,11 +77,8 @@ def is_valid_merchant_code(merchant_code):
         return merchant_code in merchant_codes
 
 
-from django.contrib.auth.hashers import check_password
-
 class LoginUserView(APIView):
     renderer_classes = [JSONRenderer]
-
     def post(self, request, *args, **kwargs):
         data = request.data
         email = data.get('email')
@@ -120,11 +117,11 @@ class LoginUserView(APIView):
                     'customer': False
                 })
 
-        # If no customer or merchant found, return False
+       
         return Response({'authenticated': False})
-
+    
     def verify_password(self, input_password, stored_password):
-        return check_password(input_password, stored_password)
+        return input_password == stored_password
 
 
 class ProductView(APIView):
