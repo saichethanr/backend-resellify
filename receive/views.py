@@ -76,9 +76,11 @@ def is_valid_merchant_code(merchant_code):
         return merchant_code in merchant_codes
 
 
+from django.contrib.auth.hashers import check_password
 
 class LoginUserView(APIView):
     renderer_classes = [JSONRenderer]
+
     def post(self, request, *args, **kwargs):
         data = request.data
         email = data.get('email')
@@ -92,11 +94,12 @@ class LoginUserView(APIView):
 
         if customer_exists:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT \"customerid\",\"customerPwd\" FROM customers WHERE \"customerMail\" = %s", [email])
+                cursor.execute("SELECT \"customerid\",\"customerName\",\"customerPwd\" FROM customers WHERE \"customerMail\" = %s", [email])
                 customer_data = cursor.fetchone()
 
-            if customer_data and self.verify_password(password, customer_data[1]):
+            if customer_data and self.verify_password(password, customer_data[2]):
                 return Response({
+                    'name': customer_data[1],
                     'authenticated': True,
                     'customerid': customer_data[0],
                     'merchant': False,
@@ -104,19 +107,24 @@ class LoginUserView(APIView):
                 })
         elif merchant_exists:
             with connection.cursor() as cursor:
-                cursor.execute("SELECT \"merchantid\",\"merchantPwd\" FROM merchants WHERE \"merchantMail\" = %s", [email])
+                cursor.execute("SELECT \"merchantid\", \"merchantName\",\"merchantPwd\" FROM merchants WHERE \"merchantMail\" = %s", [email])
                 merchant_data = cursor.fetchone()
 
-            if merchant_data and self.verify_password(password, merchant_data[1]):
+            if merchant_data and self.verify_password(password, merchant_data[2]):
                 return Response({
+                    'name': merchant_data[1],
                     'authenticated': True,
                     'merchantid': merchant_data[0],
                     'merchant': True,
                     'customer': False
                 })
+
+        # If no customer or merchant found, return False
         return Response({'authenticated': False})
+
     def verify_password(self, input_password, stored_password):
-        return input_password == stored_password
+        return check_password(input_password, stored_password)
+
 
 class ProductView(APIView):
     renderer_classes = [JSONRenderer]
@@ -265,12 +273,12 @@ class ViewIssuesView(APIView):
     def post(self, request, *args, **kwargs):
         data = request.data
         customer_id = data.get('customerid')
-        # merchant_id = data.get('merchantid')
+        merchant_id = data.get('merchantid')
 
         if customer_id is not None:
             issues = self.get_issues_for_customer(customer_id)
-        # elif merchant_id is not None:
-        #     issues = self.get_issues_for_merchant(merchant_id)
+        elif merchant_id is not None:
+            issues = self.get_issues_for_merchant(merchant_id)
         else:
             return Response({"error": "Provide either customerid or merchantid"}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -286,12 +294,12 @@ class ViewIssuesView(APIView):
             issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
         return issues
 
-    # def get_issues_for_merchant(self, merchant_id):
-    #     with connection.cursor() as cursor:
-    #         cursor.execute(
-    #             "SELECT i.* FROM public.issues i JOIN public.products p ON i.productid = p.productid WHERE p.merchantid = %s",
-    #             [merchant_id]
-    #         )
-    #         columns = [col[0] for col in cursor.description]
-    #         issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
-    #     return issues
+    def get_issues_for_merchant(self, merchant_id):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT i.* FROM public.issues i JOIN public.products p ON i.productid = p.productid WHERE p.merchantid = %s",
+                [merchant_id]
+            )
+            columns = [col[0] for col in cursor.description]
+            issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        return issues
