@@ -10,6 +10,7 @@ from rest_framework.renderers import JSONRenderer
 from django.contrib.auth.hashers import check_password 
 from rest_framework.exceptions import APIException
 import base64
+import datetime
 class RegisterUserView(APIView):
     renderer_classes = [JSONRenderer]
     def generate_unique_merchant_id(self):
@@ -303,3 +304,56 @@ class ViewIssuesView(APIView):
             columns = [col[0] for col in cursor.description]
             issues = [dict(zip(columns, row)) for row in cursor.fetchall()]
         return issues
+class OrdersView(APIView):
+    renderer_classes = [JSONRenderer]
+    def post(self, request, *args, **kwargs):
+        data = request.data
+        customer_id = data.get('customerid')
+        product_id = data.get('productid')
+        order_id = self.generate_unique_order_id()
+        order_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO public.orders VALUES (%s, %s, %s, %s)",
+                [order_id, customer_id, product_id, order_date]
+            )
+        return Response({"orderid": order_id, "orderDate": order_date}, status=status.HTTP_201_CREATED)
+
+    def generate_unique_order_id(self):
+        while True:
+            order_id = random.randint(5000, 5999)
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1 FROM public.orders WHERE orderid = %s", [order_id])
+                if not cursor.fetchone():
+                    break
+        return order_id
+
+class ReviewsView(APIView):
+    renderer_classes = [JSONRenderer]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            data = request.data
+            customer_id = data.get('customerid')
+            product_id = data.get('productid')
+            rating = data.get('rating')
+            review_id = None
+            with connection.cursor() as cursor:
+                while review_id is None or self.review_id_exists(cursor, review_id):
+                    review_id = random.randint(7000, 7999)
+                cursor.execute(
+                    """
+                    INSERT INTO public.reviews
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    [review_id, rating, customer_id, product_id]
+                )
+
+            return Response({'message': 'Review added successfully'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def review_id_exists(self, cursor, review_id):
+        cursor.execute("SELECT COUNT(*) FROM public.reviews WHERE reviewid = %s", [review_id])
+        return cursor.fetchone()[0] > 0
+
